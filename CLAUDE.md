@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Deployment
+
+- **Live**: https://shogi-corgi-hunt.vercel.app
+- **GitHub**: https://github.com/nincrw/shogi-corgi-hunt
+- **Vercel project**: `nis-projects-95845ee6/shogi-corgi-hunt` (linked via `.vercel/project.json`, gitignored)
+- **Database**: Supabase, provisioned through the Vercel Marketplace integration (not a standalone Supabase
+  project created via the Supabase dashboard/CLI). Env vars (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+  etc.) are managed in Vercel's dashboard and pulled locally with `vercel env pull .env.local`.
+- GitHub → Vercel auto-deploy-on-push is **not** connected (the Vercel GitHub App isn't authorized on the
+  `nincrw` account yet) — deploys are manual via `npx vercel deploy --prod`. To enable auto-deploy, authorize
+  the Vercel GitHub App for this repo, then `vercel git connect`.
+
 ## Commands
 
 ```bash
