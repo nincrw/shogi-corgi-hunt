@@ -1,14 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  generateScene,
-  hitRadiusFrac,
-  MASCOT_COUNT,
-  MASCOT_SIZE_FRAC,
-  type DecoyShape,
-  type Scene,
-} from "@/lib/sceneGenerator";
+import { generateScene, hitRadiusFrac, MASCOT_COUNT, MASCOT_SIZE_FRAC, type Scene } from "@/lib/sceneGenerator";
+import { drawBackgroundElement, drawClutterItem, drawSceneBackdrop } from "@/lib/sceneDrawing";
 
 const GAME_DURATION_MS = 3 * 60 * 1000;
 const MAX_NAME_LENGTH = 24;
@@ -16,32 +10,6 @@ const MAX_NAME_LENGTH = 24;
 type Phase = "start" | "playing" | "ended";
 type LeaderboardEntry = { winner_name: string; score: number; created_at: string };
 type FoundEffect = { x: number; y: number; createdAt: number };
-
-function drawDecoy(ctx: CanvasRenderingContext2D, kind: DecoyShape["kind"], r: number) {
-  ctx.beginPath();
-  if (kind === "circle") {
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-  } else if (kind === "square") {
-    ctx.rect(-r, -r, r * 2, r * 2);
-  } else if (kind === "triangle") {
-    ctx.moveTo(0, -r);
-    ctx.lineTo(r * 0.87, r * 0.5);
-    ctx.lineTo(-r * 0.87, r * 0.5);
-    ctx.closePath();
-  } else {
-    const points = 6;
-    for (let i = 0; i < points; i++) {
-      const angle = (i / points) * Math.PI * 2;
-      const wobble = 0.7 + Math.sin(i * 137.5) * 0.3;
-      const px = Math.cos(angle) * r * wobble;
-      const py = Math.sin(angle) * r * wobble;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-  }
-  ctx.fill();
-}
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -107,20 +75,12 @@ export default function HiddenObjectGame() {
     const scene = sceneRef.current;
     const minSide = Math.min(width, height);
 
-    ctx.fillStyle = scene.background;
-    ctx.fillRect(0, 0, width, height);
-
-    for (const d of scene.decoys) {
-      const x = d.xFrac * width;
-      const y = d.yFrac * height;
-      const r = d.size * minSide;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(d.rotation);
-      ctx.fillStyle = d.color;
-      ctx.globalAlpha = 0.55;
-      drawDecoy(ctx, d.kind, r);
-      ctx.restore();
+    drawSceneBackdrop(ctx, width, height);
+    for (const el of scene.background) {
+      drawBackgroundElement(ctx, el, width, height, minSide);
+    }
+    for (const item of scene.clutter) {
+      drawClutterItem(ctx, item, width, height, minSide);
     }
 
     const img = mascotImgRef.current;
@@ -131,12 +91,16 @@ export default function HiddenObjectGame() {
         const x = m.xFrac * width;
         const y = m.yFrac * height;
         ctx.save();
-        ctx.globalAlpha = 1;
         ctx.translate(x, y);
         ctx.rotate(m.rotation);
+        if (m.flip) ctx.scale(-1, 1);
         ctx.drawImage(img, -size / 2, -size / 2, size, size);
         ctx.restore();
       }
+    }
+
+    for (const occluder of scene.occluders) {
+      drawClutterItem(ctx, occluder, width, height, minSide);
     }
 
     const now = performance.now();
