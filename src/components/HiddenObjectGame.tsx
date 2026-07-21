@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generateScene, hitRadiusFrac, MASCOT_COUNT, MASCOT_SIZE_FRAC, type Scene } from "@/lib/sceneGenerator";
 import { drawBackgroundElement, drawClutterItem, drawSceneBackdrop } from "@/lib/sceneDrawing";
 
-const GAME_DURATION_MS = 3 * 60 * 1000;
+const GAME_DURATION_MS = 90 * 1000;
 const MAX_NAME_LENGTH = 24;
 
 type Phase = "start" | "playing" | "ended";
@@ -21,15 +21,16 @@ export default function HiddenObjectGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mascotImgRef = useRef<HTMLImageElement | null>(null);
-  const sceneRef = useRef<Scene>(generateScene());
+  const sceneRef = useRef<Scene>(generateScene(1));
   const effectsRef = useRef<FoundEffect[]>([]);
   const endAtRef = useRef<number>(0);
   const rafRef = useRef<number | null>(null);
   const scoreRef = useRef(0);
+  const sceneNumberRef = useRef(1);
 
   const [phase, setPhase] = useState<Phase>("start");
   const [score, setScore] = useState(0);
-  const [timeLeftSec, setTimeLeftSec] = useState(180);
+  const [timeLeftSec, setTimeLeftSec] = useState(GAME_DURATION_MS / 1000);
   const [foundInScene, setFoundInScene] = useState(0);
   const [sceneNumber, setSceneNumber] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export default function HiddenObjectGame() {
     const scene = sceneRef.current;
     const minSide = Math.min(width, height);
 
-    drawSceneBackdrop(ctx, width, height);
+    drawSceneBackdrop(ctx, width, height, scene);
     for (const el of scene.background) {
       drawBackgroundElement(ctx, el, width, height, minSide);
     }
@@ -160,7 +161,8 @@ export default function HiddenObjectGame() {
   }, [phase, draw, endGame]);
 
   const startGame = useCallback(() => {
-    sceneRef.current = generateScene();
+    sceneNumberRef.current = 1;
+    sceneRef.current = generateScene(1);
     effectsRef.current = [];
     scoreRef.current = 0;
     setScore(0);
@@ -172,7 +174,7 @@ export default function HiddenObjectGame() {
     setUsername("");
     setLeaderboard(null);
     endAtRef.current = performance.now() + GAME_DURATION_MS;
-    setTimeLeftSec(180);
+    setTimeLeftSec(GAME_DURATION_MS / 1000);
     setPhase("playing");
 
     const el = containerRef.current as (HTMLDivElement & { requestFullscreen?: () => Promise<void> }) | null;
@@ -217,9 +219,10 @@ export default function HiddenObjectGame() {
 
       const remaining = scene.mascots.filter((mm) => !mm.found).length;
       if (remaining === 0) {
-        sceneRef.current = generateScene();
+        sceneNumberRef.current += 1;
+        sceneRef.current = generateScene(sceneNumberRef.current);
         setFoundInScene(0);
-        setSceneNumber((n) => n + 1);
+        setSceneNumber(sceneNumberRef.current);
         setToast("New scene!");
         window.setTimeout(() => setToast(null), 900);
       }
@@ -294,8 +297,8 @@ export default function HiddenObjectGame() {
             <h1 className="text-2xl font-bold sm:text-3xl">🐕 Find the Shogi Corgi!</h1>
             <p className="max-w-md text-sm text-white/80 sm:text-base">
               Tap all {MASCOT_COUNT} hidden Shogi Corgi mascots as fast as you can. Clear a scene and a
-              new one appears instantly — keep going until the clock hits zero. You have{" "}
-              <span className="font-semibold text-white">3 minutes</span>.
+              new one appears instantly — with a new theme and harder camouflage each time. Keep going
+              until the clock hits zero. You have <span className="font-semibold text-white">1:30</span>.
             </p>
             <button
               onClick={startGame}

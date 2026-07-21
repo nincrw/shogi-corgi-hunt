@@ -1,37 +1,45 @@
-import type { BackgroundElement, ClutterItem } from "./sceneGenerator";
+import type { BackgroundElement, ClutterItem, Scene } from "./sceneGenerator";
 
-export const SKY_FRAC = 0.42;
-export const SEA_FRAC = 0.24;
+export const SKY_FRAC = 0.3;
 
-export function drawSceneBackdrop(ctx: CanvasRenderingContext2D, width: number, height: number) {
+export function drawSceneBackdrop(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  scene: Pick<Scene, "skyTop" | "skyBottom" | "midBand" | "groundColor">
+) {
   const skyH = height * SKY_FRAC;
-  const seaH = height * SEA_FRAC;
+  const bandH = scene.midBand ? height * scene.midBand.heightFrac : 0;
   const minSide = Math.min(width, height);
 
   const sky = ctx.createLinearGradient(0, 0, 0, skyH);
-  sky.addColorStop(0, "#7ec3ee");
-  sky.addColorStop(1, "#d3f0fb");
+  sky.addColorStop(0, scene.skyTop);
+  sky.addColorStop(1, scene.skyBottom);
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, skyH);
 
-  const sea = ctx.createLinearGradient(0, skyH, 0, skyH + seaH);
-  sea.addColorStop(0, "#3f9bd8");
-  sea.addColorStop(1, "#8fd6ee");
-  ctx.fillStyle = sea;
-  ctx.fillRect(0, skyH, width, seaH);
-
-  ctx.fillStyle = "#f2dfa8";
-  ctx.fillRect(0, skyH + seaH, width, height - (skyH + seaH));
-
-  ctx.strokeStyle = "rgba(255,255,255,0.55)";
-  ctx.lineWidth = Math.max(2, minSide * 0.008);
-  ctx.beginPath();
-  const shoreY = skyH + seaH;
-  ctx.moveTo(0, shoreY);
-  for (let x = 0; x <= width; x += width / 12) {
-    ctx.lineTo(x, shoreY + Math.sin(x * 0.03) * minSide * 0.012);
+  if (scene.midBand) {
+    const band = ctx.createLinearGradient(0, skyH, 0, skyH + bandH);
+    band.addColorStop(0, scene.midBand.top);
+    band.addColorStop(1, scene.midBand.bottom);
+    ctx.fillStyle = band;
+    ctx.fillRect(0, skyH, width, bandH);
   }
-  ctx.stroke();
+
+  ctx.fillStyle = scene.groundColor;
+  ctx.fillRect(0, skyH + bandH, width, height - (skyH + bandH));
+
+  if (scene.midBand) {
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = Math.max(2, minSide * 0.008);
+    ctx.beginPath();
+    const shoreY = skyH + bandH;
+    ctx.moveTo(0, shoreY);
+    for (let x = 0; x <= width; x += width / 12) {
+      ctx.lineTo(x, shoreY + Math.sin(x * 0.03) * minSide * 0.012);
+    }
+    ctx.stroke();
+  }
 }
 
 function withTransform(
@@ -64,11 +72,11 @@ export function drawBackgroundElement(
   withTransform(ctx, x, y, 0, false, () => {
     switch (el.kind) {
       case "sun": {
-        ctx.fillStyle = "#ffd166";
+        ctx.fillStyle = el.colorA;
         ctx.beginPath();
         ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = "#ffd166";
+        ctx.strokeStyle = el.colorA;
         ctx.lineWidth = r * 0.12;
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2;
@@ -80,8 +88,8 @@ export function drawBackgroundElement(
         break;
       }
       case "cloud": {
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#d8e6f0";
+        ctx.fillStyle = el.colorA;
+        ctx.strokeStyle = "rgba(0,0,0,0.08)";
         ctx.lineWidth = r * 0.05;
         const puffs: [number, number, number][] = [
           [-r * 0.5, 0, r * 0.5],
@@ -96,20 +104,31 @@ export function drawBackgroundElement(
         }
         break;
       }
-      case "island": {
-        ctx.fillStyle = "#dfc27a";
+      case "hill": {
+        ctx.fillStyle = el.colorA;
         ctx.beginPath();
         ctx.ellipse(0, r * 0.32, r, r * 0.32, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "#6fbf73";
+        ctx.fillStyle = el.colorB;
         ctx.beginPath();
         ctx.ellipse(0, -r * 0.02, r * 0.72, r * 0.48, 0, Math.PI, Math.PI * 2);
         ctx.fill();
         break;
       }
+      case "bgTree": {
+        ctx.fillStyle = el.colorB;
+        ctx.fillRect(-r * 0.08, -r * 0.1, r * 0.16, r * 0.9);
+        ctx.fillStyle = el.colorA;
+        ctx.beginPath();
+        ctx.arc(-r * 0.28, -r * 0.35, r * 0.42, 0, Math.PI * 2);
+        ctx.arc(r * 0.28, -r * 0.35, r * 0.42, 0, Math.PI * 2);
+        ctx.arc(0, -r * 0.7, r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
       case "lighthouse": {
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#c0392b";
+        ctx.fillStyle = el.colorA;
+        ctx.strokeStyle = el.colorB;
         ctx.lineWidth = r * 0.08;
         ctx.beginPath();
         ctx.moveTo(-r * 0.2, r);
@@ -119,7 +138,7 @@ export function drawBackgroundElement(
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = "#c0392b";
+        ctx.fillStyle = el.colorB;
         ctx.fillRect(-r * 0.16, r * 0.15, r * 0.32, r * 0.16);
         ctx.beginPath();
         ctx.moveTo(-r * 0.16, -r * 0.55);
@@ -134,8 +153,8 @@ export function drawBackgroundElement(
         break;
       }
       case "boat": {
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#33475b";
+        ctx.fillStyle = el.colorA;
+        ctx.strokeStyle = el.colorB;
         ctx.lineWidth = r * 0.07;
         ctx.beginPath();
         ctx.moveTo(-r, r * 0.28);
@@ -404,6 +423,55 @@ export function drawClutterItem(
         ctx.lineTo(r * 0.9, -r * 0.7);
         ctx.lineTo(0, -r * 0.4);
         ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case "tree": {
+        ctx.fillStyle = item.colorB;
+        ctx.fillRect(-r * 0.1, -r * 0.1, r * 0.2, r * 0.9);
+        ctx.fillStyle = item.colorA;
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = r * 0.05;
+        ctx.beginPath();
+        ctx.arc(-r * 0.32, -r * 0.35, r * 0.4, 0, Math.PI * 2);
+        ctx.arc(r * 0.32, -r * 0.35, r * 0.4, 0, Math.PI * 2);
+        ctx.arc(0, -r * 0.68, r * 0.48, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+      case "snowman": {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = r * 0.05;
+        ctx.beginPath();
+        ctx.arc(0, r * 0.45, r * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.15, r * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -r * 0.6, r * 0.26, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = item.colorA;
+        ctx.fillRect(-r * 0.32, -r * 0.72, r * 0.64, r * 0.14);
+        ctx.fillStyle = "#f97316";
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.62);
+        ctx.lineTo(r * 0.28, -r * 0.58);
+        ctx.lineTo(0, -r * 0.54);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.beginPath();
+        ctx.arc(-r * 0.1, -r * 0.63, r * 0.04, 0, Math.PI * 2);
+        ctx.arc(r * 0.1, -r * 0.63, r * 0.04, 0, Math.PI * 2);
+        ctx.arc(0, -r * 0.1, r * 0.04, 0, Math.PI * 2);
+        ctx.arc(0, r * 0.05, r * 0.04, 0, Math.PI * 2);
+        ctx.arc(0, r * 0.2, r * 0.04, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
