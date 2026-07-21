@@ -51,14 +51,15 @@ export type Scene = {
 };
 
 export const MASCOT_COUNT = 15;
-export const MASCOT_SIZE_FRAC = 0.16; // full drawn width, as a fraction of min(canvasWidth, canvasHeight)
+export const MASCOT_SIZE_FRAC = 0.13; // full drawn width, as a fraction of min(canvasWidth, canvasHeight)
 
 const GEN_ASPECT = 16 / 9;
-const MIN_MASCOT_DIST = 0.15;
-const MASCOT_SCALE_MIN = 0.55;
-const MASCOT_SCALE_MAX = 1.05;
-const CLUTTER_COUNT = 85;
-const OCCLUDER_CHANCE = 0.6;
+const MIN_MASCOT_DIST = 0.115;
+const MASCOT_SCALE_MIN = 0.4;
+const MASCOT_SCALE_MAX = 0.85;
+const CLUTTER_COUNT = 160;
+const OCCLUDER_CHANCE = 0.75;
+const SECOND_OCCLUDER_CHANCE = 0.4;
 
 const CLUTTER_KINDS: ClutterKind[] = [
   "person",
@@ -165,9 +166,9 @@ function randomClutterItem(overrides: Partial<ClutterItem> = {}): ClutterItem {
   }
 
   return {
-    xFrac: randRange(0.03, 0.97),
-    yFrac: randRange(0.34, 0.97),
-    size: randRange(0.028, 0.06),
+    xFrac: randRange(0.02, 0.98),
+    yFrac: randRange(0.32, 0.98),
+    size: randRange(0.022, 0.052),
     rotation: randRange(-0.25, 0.25),
     flip: Math.random() < 0.5,
     kind,
@@ -218,9 +219,18 @@ export function generateScene(): Scene {
     if (Math.random() < OCCLUDER_CHANCE) {
       occluders.push(
         randomClutterItem({
-          xFrac: m.xFrac + randRange(-0.025, 0.025),
-          yFrac: m.yFrac + randRange(0.01, 0.045),
-          size: randRange(0.035, 0.065) * m.scale,
+          xFrac: m.xFrac + randRange(-0.03, 0.03),
+          yFrac: m.yFrac + randRange(0.01, 0.05),
+          size: randRange(0.04, 0.075) * m.scale,
+        })
+      );
+    }
+    if (Math.random() < SECOND_OCCLUDER_CHANCE) {
+      occluders.push(
+        randomClutterItem({
+          xFrac: m.xFrac + randRange(-0.045, 0.045),
+          yFrac: m.yFrac + randRange(-0.045, 0.02),
+          size: randRange(0.035, 0.06) * m.scale,
         })
       );
     }
